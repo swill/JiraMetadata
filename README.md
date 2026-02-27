@@ -264,4 +264,4 @@ forge logout                 # Log out
 
 ## License
 
-UNLICENSED (Private)
+MIT
