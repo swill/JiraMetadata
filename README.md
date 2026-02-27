@@ -19,7 +19,7 @@ If you've never used Atlassian Forge before, follow these steps to get set up.
 
 ### Prerequisites
 
-- **Node.js**: Version 18.x or 20.x (LTS recommended)
+- **Node.js**: Version 24.x
 - **npm**: Comes with Node.js
 - **Atlassian Cloud Site**: You need a Jira Cloud site for testing. Create a free developer site at https://developer.atlassian.com/
 
