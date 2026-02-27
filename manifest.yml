@@ -1,0 +1,39 @@
+modules:
+  jira:adminPage:
+    - key: jirametadata-admin
+      title: JiraMetadata Config
+      resource: adminPage
+      render: native
+      resolver:
+        function: resolver
+
+  jira:projectSettingsPage:
+    - key: jirametadata-project
+      title: Project Metadata
+      resource: projectPage
+      render: native
+      resolver:
+        function: resolver
+
+  function:
+    - key: resolver
+      handler: resolvers/index.handler
+
+resources:
+  - key: adminPage
+    path: src/frontend/admin.jsx
+  - key: projectPage
+    path: src/frontend/project.jsx
+
+permissions:
+  scopes:
+    - storage:app
+    - read:project.property:jira
+    - write:project.property:jira
+    - read:jira-work
+    - manage:jira-project
+
+app:
+  runtime:
+    name: nodejs24.x
+  id: ari:cloud:ecosystem::app/ad5b8cbf-a8a0-43b8-a043-3a31d245616d
