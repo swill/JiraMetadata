@@ -118,10 +118,10 @@ To see console output and errors:
 forge logs
 ```
 
-Or follow logs in real-time:
+To see recent logs with more detail:
 
 ```bash
-forge logs --tail
+forge logs --verbose --grouped
 ```
 
 ### Redeploy After Changes
@@ -160,7 +160,7 @@ forge uninstall
 
 ### Project Settings
 
-1. Go to **Project Settings** → **Apps** → **Project Metadata**
+1. Go to **Spaces** → **{Target Space}** → **Space Settings** → **Apps** → **Project Metadata**
 2. Fill in values for the fields defined by your admin
 3. Click Save
 
@@ -227,7 +227,7 @@ Ensure your Atlassian account has admin access to the target Jira site.
 
 1. If using tunnel: Check that the tunnel is still running
 2. If deployed: Run `forge deploy` again
-3. Clear browser cache or try incognito mode
+3. Clear browser cache or try incognito mode or use `Shift + Reload`
 4. Check `forge logs` for errors
 
 ### Tunnel not connecting
@@ -250,7 +250,7 @@ npm install                  # Install dependencies
 forge tunnel                 # Local dev with hot reload
 forge deploy                 # Deploy to Atlassian
 forge logs                   # View logs
-forge logs --tail            # Follow logs
+forge logs --verbose         # View logs with metadata
 
 # Installation management
 forge install                # Install on a site
