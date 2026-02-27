@@ -236,6 +236,62 @@ Ensure your Atlassian account has admin access to the target Jira site.
 - Check firewall settings
 - Try restarting the tunnel
 
+## Environments and Production Deployment
+
+Forge supports three environments: **development** (default), **staging**, and **production**.
+
+### Environment Overview
+
+| Environment | Use Case | Tunnel Support | Logs |
+|-------------|----------|----------------|------|
+| development | Active development, testing | Yes | Yes |
+| staging | Pre-production testing | No | Yes |
+| production | Live users | No | No |
+
+### Deploying to Production
+
+1. **Deploy to production environment:**
+
+```bash
+forge deploy -e production
+```
+
+2. **Install on a site (first time):**
+
+```bash
+forge install -e production
+```
+
+3. **Upgrade existing installation:**
+
+```bash
+forge install --upgrade -e production
+```
+
+### Production Restrictions
+
+- **No tunneling**: `forge tunnel` is not available for production
+- **No logs**: `forge logs` is not available for production
+- Changes require a full deploy cycle
+
+### Recommended Workflow
+
+1. Develop and test locally using `forge tunnel` (development environment)
+2. Deploy to development: `forge deploy`
+3. Test on your development site
+4. Deploy to staging: `forge deploy -e staging`
+5. Test on staging site
+6. Deploy to production: `forge deploy -e production`
+7. Upgrade production installations: `forge install --upgrade -e production`
+
+### Checking Environment Status
+
+To see which environments have deployments:
+
+```bash
+forge deploy:list
+```
+
 ## Useful Commands Reference
 
 ```bash
@@ -248,12 +304,15 @@ npm install                  # Install dependencies
 
 # Development
 forge tunnel                 # Local dev with hot reload
-forge deploy                 # Deploy to Atlassian
-forge logs                   # View logs
+forge deploy                 # Deploy to development
+forge deploy -e production   # Deploy to production
+forge logs                   # View logs (dev/staging only)
 forge logs --verbose         # View logs with metadata
 
 # Installation management
 forge install                # Install on a site
+forge install -e production  # Install production version
+forge install --upgrade      # Upgrade existing installation
 forge install:list           # List installations
 forge uninstall              # Remove from a site
 
