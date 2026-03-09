@@ -108,8 +108,8 @@ resolver.define('getValues', async ({ payload, context }) => {
     console.log('getValues - response status:', response.status);
 
     if (response.status === 404) {
-      // Property doesn't exist yet - return empty values
-      return { values: {} };
+      // Property doesn't exist yet - return empty values and flag as new
+      return { values: {}, isNew: true };
     }
 
     if (!response.ok) {
@@ -208,6 +208,33 @@ resolver.define('addCustomOption', async ({ payload }) => {
   } catch (err) {
     console.error('Error adding custom option:', err);
     return { error: err.message || 'Failed to add custom option' };
+  }
+});
+
+/**
+ * Get sub-task issue types from Jira
+ */
+resolver.define('getSubtaskTypes', async () => {
+  try {
+    const response = await api.asApp().requestJira(route`/rest/api/3/issuetype`, {
+      method: 'GET',
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Error fetching issue types:', response.status, errorText);
+      return { error: `Failed to fetch issue types: ${response.status}` };
+    }
+
+    const issueTypes = await response.json();
+    const subtaskTypes = issueTypes
+      .filter((t) => t.subtask === true)
+      .map((t) => ({ label: t.name, value: t.id, iconUrl: t.iconUrl }));
+
+    return { subtaskTypes };
+  } catch (err) {
+    console.error('Error fetching subtask types:', err);
+    return { error: err.message || 'Failed to fetch subtask types' };
   }
 });
 

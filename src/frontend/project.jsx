@@ -21,7 +21,7 @@ import ForgeReconciler, {
 } from '@forge/react';
 import { invoke } from '@forge/bridge';
 
-function FieldRenderer({ field, value, onChange, error, onAddCustomOption }) {
+function FieldRenderer({ field, value, onChange, error, onAddCustomOption, subtaskTypes }) {
   const [customInput, setCustomInput] = useState('');
 
   const handleChange = (newValue) => {
@@ -179,6 +179,28 @@ function FieldRenderer({ field, value, onChange, error, onAddCustomOption }) {
           />
         );
 
+      case 'subtasktype': {
+        const selectedIds = Array.isArray(value) ? value : [];
+        const exclusions = Array.isArray(field.exclusions) ? field.exclusions.filter(Boolean) : [];
+        const filteredTypes = (subtaskTypes || []).filter(
+          (t) => !exclusions.some((ex) => t.label.includes(ex))
+        );
+        return (
+          <Select
+            value={selectedIds
+              .map((id) => filteredTypes.find((t) => t.value === id))
+              .filter(Boolean)}
+            onChange={(selected) => {
+              handleChange(selected ? selected.map((s) => s.value) : []);
+            }}
+            options={filteredTypes}
+            isMulti
+            isClearable
+            placeholder={field.placeholder || 'Select sub-task types...'}
+          />
+        );
+      }
+
       default:
         return (
           <Textfield
@@ -218,6 +240,7 @@ function ProjectPage() {
 
   const [schema, setSchema] = useState(null);
   const [values, setValues] = useState({});
+  const [subtaskTypes, setSubtaskTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -251,6 +274,15 @@ function ProjectPage() {
         }
         setSchema(schemaResult.schema);
 
+        // Fetch subtask types if any field needs them
+        const hasSubtaskField = schemaResult.schema?.fields?.some((f) => f.type === 'subtasktype');
+        if (hasSubtaskField) {
+          const subtaskTypesResult = await invoke('getSubtaskTypes');
+          if (!subtaskTypesResult.error) {
+            setSubtaskTypes(subtaskTypesResult.subtaskTypes || []);
+          }
+        }
+
         // Load values - the resolver will get projectKey from its own context
         const valuesResult = await invoke('getValues', {
           contextType: 'project',
@@ -259,14 +291,26 @@ function ProjectPage() {
         if (valuesResult.error) {
           setError(valuesResult.error);
         } else {
-          // Merge with defaults
+          // Compute defaults from schema
           const defaultValues = {};
           schemaResult.schema?.fields?.forEach((field) => {
             if (field.default !== undefined) {
               defaultValues[field.key] = field.default;
             }
           });
-          setValues({ ...defaultValues, ...valuesResult.values });
+          const mergedValues = { ...defaultValues, ...valuesResult.values };
+          setValues(mergedValues);
+
+          // Auto-save defaults to project properties when this is a new project
+          if (valuesResult.isNew && Object.keys(defaultValues).length > 0) {
+            invoke('saveValues', {
+              contextType: 'project',
+              contextId: projectKey,
+              values: mergedValues,
+            }).catch((err) => {
+              console.error('Failed to auto-save defaults:', err);
+            });
+          }
         }
       } catch (err) {
         setError(`Error: ${err.message}`);
@@ -421,6 +465,7 @@ function ProjectPage() {
               onChange={handleChange}
               error={validationErrors[field.key]}
               onAddCustomOption={handleAddCustomOption}
+              subtaskTypes={subtaskTypes}
             />
           ))}
         </Stack>

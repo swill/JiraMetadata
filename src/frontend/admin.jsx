@@ -28,6 +28,7 @@ const FIELD_TYPES = [
   { label: 'Date', value: 'date' },
   { label: 'User', value: 'user' },
   { label: 'URL', value: 'url' },
+  { label: 'Sub-Task Types', value: 'subtasktype' },
 ];
 
 function generateKey(label) {
@@ -92,6 +93,20 @@ function OptionsEditor({ options, onChange }) {
 function FieldEditor({ field, onSave, onCancel, isNew, existingKeys }) {
   const [editedField, setEditedField] = useState({ ...field });
   const [errors, setErrors] = useState([]);
+  const [subtaskTypes, setSubtaskTypes] = useState([]);
+  const [loadingSubtaskTypes, setLoadingSubtaskTypes] = useState(false);
+
+  useEffect(() => {
+    if (editedField.type === 'subtasktype') {
+      setLoadingSubtaskTypes(true);
+      invoke('getSubtaskTypes').then((result) => {
+        if (!result.error) {
+          setSubtaskTypes(result.subtaskTypes || []);
+        }
+        setLoadingSubtaskTypes(false);
+      });
+    }
+  }, [editedField.type]);
 
   const handleChange = (key, value) => {
     setEditedField((prev) => {
@@ -99,10 +114,13 @@ function FieldEditor({ field, onSave, onCancel, isNew, existingKeys }) {
       if (key === 'label' && isNew) {
         updated.key = generateKey(value);
       }
-      // Clear options when changing away from select types
-      if (key === 'type' && value !== 'select' && value !== 'multiselect') {
-        delete updated.options;
-        delete updated.allowCustom;
+      // Reset default and clear type-specific properties when type changes
+      if (key === 'type') {
+        delete updated.default;
+        if (value !== 'select' && value !== 'multiselect') {
+          delete updated.options;
+          delete updated.allowCustom;
+        }
       }
       return updated;
     });
@@ -184,6 +202,52 @@ function FieldEditor({ field, onSave, onCancel, isNew, existingKeys }) {
             options={FIELD_TYPES}
           />
         </Stack>
+
+        {editedField.type === 'subtasktype' && (
+          <Stack space="space.150">
+            <SectionMessage appearance="information">
+              <Text>
+                Options are dynamically fetched from your Jira instance's sub-task issue types.
+                No manual options configuration is needed.
+              </Text>
+            </SectionMessage>
+            <Box padding="space.100" backgroundColor="color.background.neutral">
+              <Stack space="space.100">
+                <Label>Exclude by Name</Label>
+                <HelperMessage>
+                  Sub-task types whose names contain any of these strings will be hidden from the selector.
+                </HelperMessage>
+                {(editedField.exclusions || []).map((ex, i) => (
+                  <Inline key={i} space="space.100" alignBlock="center">
+                    <Textfield
+                      value={ex}
+                      onChange={(e) => {
+                        const updated = [...(editedField.exclusions || [])];
+                        updated[i] = e.target.value;
+                        handleChange('exclusions', updated);
+                      }}
+                    />
+                    <Button
+                      appearance="subtle"
+                      onClick={() => {
+                        const updated = (editedField.exclusions || []).filter((_, idx) => idx !== i);
+                        handleChange('exclusions', updated);
+                      }}
+                    >
+                      Remove
+                    </Button>
+                  </Inline>
+                ))}
+                <Button
+                  appearance="subtle"
+                  onClick={() => handleChange('exclusions', [...(editedField.exclusions || []), ''])}
+                >
+                  + Add Exclusion
+                </Button>
+              </Stack>
+            </Box>
+          </Stack>
+        )}
 
         <Stack space="space.050">
           <Label labelFor="field-description">Description (optional)</Label>
@@ -268,6 +332,27 @@ function FieldEditor({ field, onSave, onCancel, isNew, existingKeys }) {
               onChange={(e) => handleChange('default', e.target.value === '' ? null : Number(e.target.value))}
               placeholder="Default number value"
             />
+          ) : editedField.type === 'subtasktype' ? (
+            loadingSubtaskTypes ? (
+              <Inline alignBlock="center" space="space.100">
+                <Spinner size="small" />
+                <Text>Loading sub-task types...</Text>
+              </Inline>
+            ) : subtaskTypes.length === 0 ? (
+              <HelperMessage>No sub-task types found in this Jira instance</HelperMessage>
+            ) : (
+              <Select
+                inputId="field-default"
+                isMulti
+                value={(Array.isArray(editedField.default) ? editedField.default : [])
+                  .map((id) => subtaskTypes.find((t) => t.value === id))
+                  .filter(Boolean)}
+                onChange={(selected) => handleChange('default', selected ? selected.map((s) => s.value) : [])}
+                options={subtaskTypes}
+                isClearable
+                placeholder="Select default sub-task types..."
+              />
+            )
           ) : editedField.type !== 'multiselect' && editedField.type !== 'date' ? (
             <Textfield
               id="field-default"
@@ -455,7 +540,8 @@ function AdminPage() {
                       <Text size="small" color="color.text.subtlest">
                         Key: {field.key} | Type: {field.type}
                         {field.required && ' | Required'}
-                        {field.options && field.options.length > 0 && ` | ${field.options.length} options`}
+                        {field.type === 'subtasktype' && ' | Options from Jira'}
+                        {field.type !== 'subtasktype' && field.options && field.options.length > 0 && ` | ${field.options.length} options`}
                         {field.allowCustom && ' | Custom allowed'}
                         {field.system && ' | System'}
                       </Text>
